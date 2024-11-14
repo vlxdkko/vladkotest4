@@ -1,0 +1,45 @@
+/* Белый фон для всей страницы */
+body {
+    font-family: Arial, sans-serif;
+    background-color: white; /* Белый фон */
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+/* Контейнер для графика — делаем адаптивным */
+.chart-container {
+    width: 90%;  /* График будет занимать 90% ширины экрана */
+    max-width: 1000px;  /* Максимальная ширина */
+    margin: auto;  /* Центрируем график */
+    padding-top: 20px;
+    height: 400px;  /* Высота графика по умолчанию */
+}
+
+/* Стили для списка товаров */
+.product-list {
+    margin: 20px 0;
+    padding: 10px;
+}
+
+.product-item {
+    margin: 10px 0;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 600px) {
+    .chart-container {
+        width: 95%;  /* Уменьшаем ширину графика для мобильных устройств */
+        height: 500px; /* Увеличиваем высоту графика на мобильных */
+    }
+
+    h1 {
+        font-size: 20px;  /* Уменьшаем размер заголовка на мобильных */
+        text-align: center;
+    }
+
+    .product-list {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+}

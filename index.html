@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Product Views</title>
+    <!-- Подключаем внешний CSS файл -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Подключаем Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Подключаем Chart.js без модуля -->
+</head>
+<body>
+
+    <h1>Статистика товаров</h1>
+
+    <!-- Список товаров с возможностью выбора -->
+    <div class="product-list" id="productList">
+        <!-- Продукты будут добавляться сюда динамически -->
+    </div>
+
+    <div id="chartContainer" class="chart-container">
+        <canvas id="viewsChart"></canvas>
+    </div>
+
+    <!-- Подключаем Firebase SDK с типом "module" -->
+    <script type="module">
+        // Импортируем необходимые части Firebase SDK для использования с модульной системой
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.9.3/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.9.3/firebase-database.js";
+
+        // Инициализация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRGnnj1Ibdl5yRmLG7bqajA8SCIlgihZE",
+            authDomain: "testavito-cdb2f.firebaseapp.com",
+            databaseURL: "https://testavito-cdb2f-default-rtdb.firebaseio.com",
+            projectId: "testavito-cdb2f",
+            storageBucket: "testavito-cdb2f.firebasestorage.app",
+            messagingSenderId: "592239863357",
+            appId: "1:592239863357:web:244318ea5735823f2a2c54"
+        };
+
+        const app = initializeApp(firebaseConfig);  // Инициализация приложения
+        const database = getDatabase(app);  // Получаем ссылку на базу данных
+
+        let chartInstance = null;  // Переменная для хранения экземпляра графика
+
+        // Функция для загрузки данных и отрисовки графика
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = parseInt(urlParams.get('id'), 10);
+
+            if (!userId) {
+                alert('Не указан ID пользователя в URL');
+                return;
+            }
+
+            // Загружаем данные пользователя из Firebase
+            const userRef = ref(database, 'users/' + userId + '/products');
+            get(userRef)
+                .then(snapshot => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        populateProductList(userData);
+                    } else {
+                        alert('Пользователь с таким ID не найден');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки данных:', error);
+                });
+        });
+
+        // Функция для заполения списка продуктов
+        function populateProductList(products) {
+            const productList = document.getElementById('productList');
+            productList.innerHTML = '';  // Очищаем список перед добавлением новых элементов
+
+            // Для каждого продукта создаем элемент с галочкой
+            Object.keys(products).forEach(productId => {
+                const product = products[productId];
+                const productItem = document.createElement('div');
+                productItem.className = 'product-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = productId;
+                checkbox.value = productId;
+                checkbox.addEventListener('change', () => updateChart(products));
+
+                const label = document.createElement('label');
+                label.setAttribute('for', productId);
+                label.textContent = product.name;
+
+                productItem.appendChild(checkbox);
+                productItem.appendChild(label);
+                productList.appendChild(productItem);
+            });
+        }
+
+        // Функция для обновления графика на основе выбранных продуктов
+        function updateChart(products) {
+            const selectedProductIds = Array.from(document.querySelectorAll('.product-item input:checked')).map(input => input.value);
+
+            // Если нет выбранных продуктов, очищаем график
+            if (selectedProductIds.length === 0) {
+                clearChart();
+                return;
+            }
+
+            const datasets = [];
+
+            // Перебираем выбранные продукты и формируем набор данных для графика
+            selectedProductIds.forEach(productId => {
+                const product = products[productId];
+                const dates = Object.keys(product.views);  // Массив дат
+                const views = Object.values(product.views);  // Массив количества просмотров
+
+                datasets.push({
+                    label: product.name,
+                    data: views,
+                    borderColor: getRandomColor(),
+                    fill: false
+                });
+            });
+
+            // Находим контекст для рисования графика
+            const ctx = document.getElementById('viewsChart').getContext('2d');
+
+            // Удаляем старый график, если он существует
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Строим график с помощью Chart.js
+            chartInstance = new Chart(ctx, {
+                type: 'line',  // Линейный график
+                data: {
+                    labels: Object.keys(products[Object.keys(products)[0]].views),  // Используем даты из первого выбранного продукта
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,  // Адаптивность
+                    scales: {
+                        y: {
+                            beginAtZero: true,  // Начинать с нуля
+                            title: {
+                                display: true,
+                                text: 'Просмотры'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Дата'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Функция для очистки графика
+        function clearChart() {
+            const ctx = document.getElementById('viewsChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy(); // Уничтожаем старый график
+            }
+        }
+
+        // Функция для генерации случайного цвета для каждой линии графика
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+
+</body>
+</html>
